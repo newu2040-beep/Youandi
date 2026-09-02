@@ -1,0 +1,6 @@
+{
+  "name": "You & i",
+  "description": "Real people. Real connections. Fresh Apple-inspired, premium minimal connection app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
