@@ -183,6 +183,83 @@ class AuthRepository(val db: AppDatabase) {
         return Result.success(newUser)
     }
 
+    suspend fun completeOnboarding(
+        userId: String,
+        displayName: String,
+        dob: String,
+        gender: String,
+        targetGender: String,
+        heightCm: Int,
+        datingGoal: String,
+        avatarUrl: String,
+        photosJson: String,
+        bio: String,
+        interests: String,
+        hobbies: String,
+        locationCity: String,
+        locationArea: String,
+        latitude: Double?,
+        longitude: Double?,
+        minAgePref: Int,
+        maxAgePref: Int,
+        distanceKmPref: Int
+    ): Result<UserEntity> {
+        val currentUser = userDao.getUserById(userId) ?: return Result.failure(Exception("User not found"))
+        val age = calculateAge(dob)
+        val ageGroup = if (age in 13..17) AgeGroup.TEEN else AgeGroup.ADULT
+
+        val updatedUser = currentUser.copy(
+            displayName = displayName.ifBlank { currentUser.displayName },
+            dateOfBirth = dob,
+            age = age,
+            ageGroup = ageGroup,
+            gender = gender,
+            targetGender = targetGender,
+            heightCm = heightCm,
+            datingGoal = datingGoal,
+            avatarUrl = avatarUrl.ifBlank { currentUser.avatarUrl },
+            photosJson = photosJson,
+            bio = bio,
+            locationCity = locationCity,
+            locationArea = locationArea,
+            latitude = latitude ?: currentUser.latitude,
+            longitude = longitude ?: currentUser.longitude,
+            isOnboarded = true,
+            updatedAt = System.currentTimeMillis()
+        )
+
+        userDao.updateUser(updatedUser)
+
+        profileDao.insertOrUpdateProfile(
+            ProfileEntity(
+                userId = userId,
+                bio = bio,
+                interests = interests,
+                hobbies = hobbies,
+                heightCm = heightCm,
+                gender = gender,
+                targetGender = targetGender,
+                photosJson = photosJson,
+                relationshipIntention = datingGoal,
+                profileCompletion = 100,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+
+        preferenceDao.insertOrUpdatePreference(
+            PreferenceEntity(
+                userId = userId,
+                minAge = minAgePref,
+                maxAge = maxAgePref,
+                distanceKm = distanceKmPref,
+                preferredGender = targetGender,
+                preferredInterests = interests
+            )
+        )
+
+        return Result.success(updatedUser)
+    }
+
     suspend fun sendPasswordReset(email: String): Result<Unit> {
         return try {
             FirebaseAuth.getInstance().sendPasswordResetEmail(email).await()

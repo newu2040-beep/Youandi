@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
         SessionEntity::class,
         AuditLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -50,6 +50,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "you_and_i_db"
                 )
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback(context))
                 .build()
                 INSTANCE = instance

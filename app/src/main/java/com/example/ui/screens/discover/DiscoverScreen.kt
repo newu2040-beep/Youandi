@@ -28,27 +28,32 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.R
 import com.example.data.model.UserEntity
+import com.example.data.repository.DiscoveryRepository
 import com.example.ui.components.AppFilterChip
 import com.example.ui.components.InterestChip
 import com.example.ui.components.VerificationBadge
+import com.example.ui.theme.LocalCompactMode
 
 @Composable
 fun DiscoverScreen(
+    currentUser: UserEntity? = null,
     discoverUsers: List<UserEntity>,
     onSelectUser: (UserEntity) -> Unit,
     onLikeUser: (UserEntity) -> Unit,
     onSaveUser: (UserEntity) -> Unit,
     onPassUser: (UserEntity) -> Unit
 ) {
+    val isCompact = LocalCompactMode.current
     var activeFilter by remember { mutableStateOf("All") }
     val filters = listOf("All", "Nearby", "New Today", "Verified", "Music", "Fitness", "Books")
 
     val filteredList = remember(activeFilter, discoverUsers) {
         when (activeFilter) {
             "Verified" -> discoverUsers.filter { it.verificationStatus != com.example.data.model.VerificationStatus.UNVERIFIED }
-            "Nearby" -> discoverUsers.filter { it.locationArea.contains("Kathmandu", ignoreCase = true) }
+            "Nearby" -> discoverUsers.filter { it.locationCity.contains("Kathmandu", ignoreCase = true) || it.locationArea.contains("Kathmandu", ignoreCase = true) }
             "Music" -> discoverUsers.filter { it.bio.contains("music", ignoreCase = true) || it.bio.contains("acoustic", ignoreCase = true) }
             else -> discoverUsers
         }
@@ -134,7 +139,9 @@ fun DiscoverScreen(
                 ) {
                     items(filteredList, key = { it.id }) { user ->
                         DiscoverProfileCard(
+                            currentUser = currentUser,
                             user = user,
+                            isCompact = isCompact,
                             onClick = { onSelectUser(user) },
                             onLike = { onLikeUser(user) },
                             onPass = { onPassUser(user) },
@@ -149,16 +156,25 @@ fun DiscoverScreen(
 
 @Composable
 fun DiscoverProfileCard(
+    currentUser: UserEntity? = null,
     user: UserEntity,
+    isCompact: Boolean = false,
     onClick: () -> Unit,
     onLike: () -> Unit,
     onPass: () -> Unit,
     onSave: () -> Unit
 ) {
+    val distanceKm = remember(currentUser, user) {
+        DiscoveryRepository.calculateDistanceKm(
+            currentUser?.latitude, currentUser?.longitude,
+            user.latitude, user.longitude
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(440.dp)
+            .height(if (isCompact) 360.dp else 440.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
@@ -176,6 +192,13 @@ fun DiscoverProfileCard(
             } else if (user.avatarUrl.contains("img_profile_aarav")) {
                 Image(
                     painter = painterResource(id = R.drawable.img_profile_aarav_1788365288136),
+                    contentDescription = user.displayName,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else if (user.avatarUrl.isNotBlank()) {
+                AsyncImage(
+                    model = user.avatarUrl,
                     contentDescription = user.displayName,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -280,7 +303,7 @@ fun DiscoverProfileCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = user.locationArea,
+                        text = "${user.locationCity.ifBlank { user.locationArea }} • ~$distanceKm km away",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.85f)
                     )

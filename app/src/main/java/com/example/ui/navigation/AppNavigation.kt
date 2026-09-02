@@ -21,6 +21,7 @@ import com.example.ui.screens.admin.AdminDashboardScreen
 import com.example.ui.screens.chat.*
 import com.example.ui.screens.discover.DiscoverScreen
 import com.example.ui.screens.home.HomeDashboardScreen
+import com.example.ui.screens.onboarding.OnboardingScreen
 import com.example.ui.screens.profile.MyProfileAndSettingsScreen
 import com.example.ui.screens.profile.ProfileDetailScreen
 import com.example.ui.screens.safety.SafetyCenterScreen
@@ -46,8 +47,10 @@ fun AppNavigation(
     safetyRepo: SafetyRepository,
     currentTheme: AppTheme,
     isDarkMode: Boolean,
+    isCompactMode: Boolean = false,
     onSelectTheme: (AppTheme) -> Unit,
-    onToggleDarkMode: (Boolean) -> Unit
+    onToggleDarkMode: (Boolean) -> Unit,
+    onToggleCompactMode: (Boolean) -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -183,6 +186,36 @@ fun AppNavigation(
                 errorMessage = authError
             )
         }
+    } else if (currentUser != null && !currentUser.isGuest && !currentUser.isOnboarded) {
+        // Onboarding Screen for newly registered / Google signed-in users
+        OnboardingScreen(
+            currentUser = currentUser,
+            onCompleteOnboarding = { name, dob, gender, targetGender, heightCm, datingGoal, avatarUrl, photosJson, bio, interests, hobbies, locationCity, locationArea, lat, lon, minAge, maxAge, dist ->
+                coroutineScope.launch {
+                    authRepo.completeOnboarding(
+                        userId = currentUser.id,
+                        displayName = name,
+                        dob = dob,
+                        gender = gender,
+                        targetGender = targetGender,
+                        heightCm = heightCm,
+                        datingGoal = datingGoal,
+                        avatarUrl = avatarUrl,
+                        photosJson = photosJson,
+                        bio = bio,
+                        interests = interests,
+                        hobbies = hobbies,
+                        locationCity = locationCity,
+                        locationArea = locationArea,
+                        latitude = lat,
+                        longitude = lon,
+                        minAgePref = minAge,
+                        maxAgePref = maxAge,
+                        distanceKmPref = dist
+                    )
+                }
+            }
+        )
     } else {
         // Main App Layout
         Scaffold(
@@ -357,6 +390,7 @@ fun AppNavigation(
                                 onNavigateToSafetyCenter = { showSafetyCenter = true }
                             )
                             Screen.Discover -> DiscoverScreen(
+                                currentUser = currentUser,
                                 discoverUsers = discoverUsers,
                                 onSelectUser = { selectedUserForDetail = it },
                                 onLikeUser = { target ->
@@ -390,8 +424,10 @@ fun AppNavigation(
                                 currentUser = currentUser,
                                 currentTheme = currentTheme,
                                 isDarkMode = isDarkMode,
+                                isCompactMode = isCompactMode,
                                 onSelectTheme = onSelectTheme,
                                 onToggleDarkMode = onToggleDarkMode,
+                                onToggleCompactMode = onToggleCompactMode,
                                 onSaveProfile = { name, bio, location ->
                                     coroutineScope.launch {
                                         val updated = currentUser?.copy(

@@ -1,5 +1,10 @@
 package com.example.ui.screens.profile
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,21 +15,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.AdminPanelSettings
-import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material.icons.outlined.Logout
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.data.model.UserEntity
 import com.example.data.model.UserRole
 import com.example.ui.components.GlassCard
@@ -38,8 +41,10 @@ fun MyProfileAndSettingsScreen(
     currentUser: UserEntity?,
     currentTheme: AppTheme,
     isDarkMode: Boolean,
+    isCompactMode: Boolean = false,
     onSelectTheme: (AppTheme) -> Unit,
     onToggleDarkMode: (Boolean) -> Unit,
+    onToggleCompactMode: (Boolean) -> Unit = {},
     onSaveProfile: (name: String, bio: String, location: String) -> Unit,
     onNavigateToSafetyCenter: () -> Unit,
     onNavigateToAdminDashboard: () -> Unit,
@@ -47,6 +52,7 @@ fun MyProfileAndSettingsScreen(
     onDeleteAccount: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     var nameInput by remember(currentUser) { mutableStateOf(currentUser?.displayName ?: "") }
     var bioInput by remember(currentUser) { mutableStateOf(currentUser?.bio ?: "") }
@@ -55,6 +61,21 @@ fun MyProfileAndSettingsScreen(
     var profileVisibility by remember { mutableStateOf(true) }
     var onlineStatusVisibility by remember { mutableStateOf(true) }
     var isEditing by remember { mutableStateOf(false) }
+
+    // Rationale dialog state
+    var permissionRationaleMessage by remember { mutableStateOf<String?>(null) }
+    var pendingPermissionAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    // Permission Launchers
+    val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { map ->
+        // Trigger recomposition by re-checking permission states
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val notificationsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    fun checkPermissionGranted(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
 
     Box(
         modifier = Modifier
@@ -263,6 +284,124 @@ fun MyProfileAndSettingsScreen(
                         onCheckedChange = { onToggleDarkMode(it) }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Smartphone,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Compact Mode",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = "Auto-reflow UI for smaller displays",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = isCompactMode,
+                        onCheckedChange = { onToggleCompactMode(it) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // System Permissions & Device Access
+            SectionHeaderTitle("System Permissions & Privacy")
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Location Permission
+                    val locationGranted = checkPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION) || checkPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    PermissionItemRow(
+                        title = "Location Services",
+                        description = "Calculates approximate match distance",
+                        icon = Icons.Outlined.LocationOn,
+                        isGranted = locationGranted,
+                        onRequest = {
+                            if (!locationGranted) {
+                                permissionRationaleMessage = "You & i uses coarse location to show approximate candidate distances. Exact coordinates are never shared."
+                                pendingPermissionAction = {
+                                    locationLauncher.launch(
+                                        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    )
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    // Camera Permission
+                    val cameraGranted = checkPermissionGranted(Manifest.permission.CAMERA)
+                    PermissionItemRow(
+                        title = "Camera",
+                        description = "Captures instant profile photos",
+                        icon = Icons.Outlined.CameraAlt,
+                        isGranted = cameraGranted,
+                        onRequest = {
+                            if (!cameraGranted) {
+                                permissionRationaleMessage = "Camera access allows taking a quick selfie for instant profile verification."
+                                pendingPermissionAction = {
+                                    cameraLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    // Gallery Permission
+                    PermissionItemRow(
+                        title = "Photo Gallery Picker",
+                        description = "Android visual photo picker",
+                        icon = Icons.Outlined.PhotoLibrary,
+                        isGranted = true, // Visual photo picker is zero-permission on modern Android
+                        onRequest = {}
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+
+                    // Notification Permission
+                    val notifGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        checkPermissionGranted(Manifest.permission.POST_NOTIFICATIONS)
+                    } else true
+
+                    PermissionItemRow(
+                        title = "Notifications",
+                        description = "Alerts for new matches & chats",
+                        icon = Icons.Outlined.Notifications,
+                        isGranted = notifGranted,
+                        onRequest = {
+                            if (!notifGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                permissionRationaleMessage = "Receive real-time push notifications when you get a match or message."
+                                pendingPermissionAction = {
+                                    notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -394,6 +533,85 @@ fun MyProfileAndSettingsScreen(
                 }
             }
         }
+
+        // Permission Rationale Modal
+        if (permissionRationaleMessage != null) {
+            AlertDialog(
+                onDismissRequest = { permissionRationaleMessage = null },
+                title = { Text("Permission Rationale", fontWeight = FontWeight.Bold) },
+                text = { Text(permissionRationaleMessage ?: "") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val action = pendingPermissionAction
+                        permissionRationaleMessage = null
+                        pendingPermissionAction = null
+                        action?.invoke()
+                    }) {
+                        Text("Grant Permission", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { permissionRationaleMessage = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PermissionItemRow(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isGranted: Boolean,
+    onRequest: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isGranted) { onRequest() },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        AssistChip(
+            onClick = { onRequest() },
+            label = {
+                Text(
+                    text = if (isGranted) "Granted ✓" else "Enable",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = if (isGranted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                labelColor = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        )
     }
 }
 

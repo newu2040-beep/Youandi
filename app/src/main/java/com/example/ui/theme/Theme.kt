@@ -21,10 +21,11 @@ fun YouAndITheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     appTheme: AppTheme = AppTheme.SKY,
     dynamicColor: Boolean = false,
+    compactMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val configuration = LocalConfiguration.current
-    val isCompactScreen = configuration.screenWidthDp < 380 || configuration.screenHeightDp < 680
+    val isCompactScreen = compactMode || configuration.screenWidthDp < 380 || configuration.screenHeightDp < 680
 
     val lightColorScheme = lightColorScheme(
         primary = appTheme.primaryColor,

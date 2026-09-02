@@ -35,13 +35,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             val systemDark = isSystemInDarkTheme()
             val initialDark = prefs.getBoolean("is_dark_mode", systemDark)
+            val initialCompact = prefs.getBoolean("is_compact_mode", false)
 
             var currentTheme by remember { mutableStateOf(initialTheme) }
             var isDarkMode by remember { mutableStateOf(initialDark) }
+            var isCompactMode by remember { mutableStateOf(initialCompact) }
 
             YouAndITheme(
                 appTheme = currentTheme,
-                darkTheme = isDarkMode
+                darkTheme = isDarkMode,
+                compactMode = isCompactMode
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     AppNavigation(
@@ -52,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         safetyRepo = safetyRepo,
                         currentTheme = currentTheme,
                         isDarkMode = isDarkMode,
+                        isCompactMode = isCompactMode,
                         onSelectTheme = { selectedTheme ->
                             currentTheme = selectedTheme
                             prefs.edit().putString("app_theme", selectedTheme.name).apply()
@@ -59,6 +63,10 @@ class MainActivity : ComponentActivity() {
                         onToggleDarkMode = { darkMode ->
                             isDarkMode = darkMode
                             prefs.edit().putBoolean("is_dark_mode", darkMode).apply()
+                        },
+                        onToggleCompactMode = { compact ->
+                            isCompactMode = compact
+                            prefs.edit().putBoolean("is_compact_mode", compact).apply()
                         }
                     )
                 }

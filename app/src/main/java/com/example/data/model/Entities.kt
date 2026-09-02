@@ -36,9 +36,18 @@ data class UserEntity(
     val dateOfBirth: String, // YYYY-MM-DD
     val age: Int,
     val ageGroup: AgeGroup,
+    val gender: String = "MALE", // MALE, FEMALE, OTHER
+    val targetGender: String = "FEMALE", // FEMALE, MALE, ALL
+    val heightCm: Int = 175,
+    val datingGoal: String = "Long-term relationship",
     val avatarUrl: String = "",
+    val photosJson: String = "[]", // JSON array of photo URLs
     val bio: String = "",
     val locationArea: String = "Kathmandu area",
+    val locationCity: String = "Kathmandu",
+    val latitude: Double? = 27.7172,
+    val longitude: Double? = 85.3240,
+    val isOnboarded: Boolean = true,
     val verificationStatus: VerificationStatus = VerificationStatus.EMAIL_VERIFIED,
     val accountStatus: AccountStatus = AccountStatus.ACTIVE,
     val role: UserRole = UserRole.USER,
@@ -55,7 +64,11 @@ data class ProfileEntity(
     val interests: String = "Travel, Music, Fitness", // comma-separated
     val hobbies: String = "Photography, Reading, Hiking",
     val personality: String = "Thoughtful & Adventurous",
-    val relationshipIntention: String = "Meaningful Connections",
+    val relationshipIntention: String = "Long-term relationship",
+    val heightCm: Int = 175,
+    val gender: String = "MALE",
+    val targetGender: String = "FEMALE",
+    val photosJson: String = "[]",
     val visibility: String = "PUBLIC",
     val profileCompletion: Int = 85,
     val createdAt: Long = System.currentTimeMillis(),
@@ -66,8 +79,9 @@ data class ProfileEntity(
 data class PreferenceEntity(
     @PrimaryKey val userId: String,
     val minAge: Int = 18,
-    val maxAge: Int = 30,
-    val distanceKm: Int = 25,
+    val maxAge: Int = 35,
+    val distanceKm: Int = 50,
+    val preferredGender: String = "FEMALE", // FEMALE, MALE, ALL
     val preferredInterests: String = "Music, Art, Travel",
     val visibilitySettings: String = "PUBLIC"
 )
